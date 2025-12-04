@@ -1,0 +1,41 @@
+# Exclude subject data folders S3-S17
+S3/
+S4/
+S5/
+S6/
+S7/
+S8/
+S9/
+S10/
+S11/
+S13/
+S14/
+S15/
+S16/
+S17/
+
+# Large data files (>100MB)
+*.pkl
+*_respiban.txt
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
