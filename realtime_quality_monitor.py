@@ -26,16 +26,16 @@ class SlidingWindowQualityMonitor:
             'temp': 4.0     # Hz
         }
     
-    def calculate_acc_quality(self, acc_data: np.ndarray) -> Tuple[float, float, float]:
+    def calculate_acc_quality(self, acc_data: np.ndarray) -> Tuple[float, bool, float, Dict]:
         """Calculate ACC quality metrics for a window"""
         if len(acc_data) < 10:
-            return 0.0, 0.0, 0.0
+            return 0.0, False, 0.0, {}
         
         magnitude = np.sqrt(np.sum(acc_data**2, axis=1))
         
         # On-body detection (variance threshold)
         variance = np.var(magnitude)
-        on_body = 100.0 if variance > 0.01 else 0.0
+        on_body = variance > 0.01
         
         # Signal quality checks
         not_stuck = 100.0 if variance > 0.001 else 0.0
@@ -46,12 +46,20 @@ class SlidingWindowQualityMonitor:
         # Completeness (assume complete if we have data)
         completeness = 100.0
         
-        return completeness, on_body, signal_quality
+        # Current values
+        current_values = {
+            'x': acc_data[-1, 0],
+            'y': acc_data[-1, 1],
+            'z': acc_data[-1, 2],
+            'magnitude': magnitude[-1]
+        }
+        
+        return completeness, on_body, signal_quality, current_values
     
-    def calculate_bvp_quality(self, bvp_data: np.ndarray, sample_rate: float) -> Tuple[float, float, float]:
+    def calculate_bvp_quality(self, bvp_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate BVP quality using spectral entropy"""
         if len(bvp_data) < 64:
-            return 0.0, 0.0, 0.0
+            return 0.0, False, 0.0, {}
         
         # Compute power spectral density
         freqs, psd = signal.periodogram(bvp_data, fs=sample_rate)
@@ -70,17 +78,24 @@ class SlidingWindowQualityMonitor:
             signal_quality = 0.0
         
         completeness = 100.0
-        on_body = 100.0 if np.std(bvp_data) > 0.1 else 0.0
+        on_body = np.std(bvp_data) > 0.1
         
-        return completeness, on_body, signal_quality
+        # Current values
+        current_values = {
+            'bvp': bvp_data[-1],
+            'mean': np.mean(bvp_data),
+            'std': np.std(bvp_data)
+        }
+        
+        return completeness, on_body, signal_quality, current_values
     
-    def calculate_eda_quality(self, eda_data: np.ndarray, sample_rate: float) -> Tuple[float, float, float]:
+    def calculate_eda_quality(self, eda_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate EDA quality metrics"""
         if len(eda_data) < 4:
-            return 0.0, 0.0, 0.0
+            return 0.0, False, 0.0, {}
         
         # On-body detection
-        on_body = 100.0 if np.mean(eda_data > 0.05) > 0.5 else 0.0
+        on_body = np.mean(eda_data > 0.05) > 0.5
         
         # Signal quality - check rate of change
         max_reasonable_change = 0.5  # μS/second
@@ -89,15 +104,23 @@ class SlidingWindowQualityMonitor:
         
         completeness = 100.0
         
-        return completeness, on_body, signal_quality
+        # Current values
+        current_values = {
+            'eda': eda_data[-1],
+            'mean': np.mean(eda_data),
+            'min': np.min(eda_data),
+            'max': np.max(eda_data)
+        }
+        
+        return completeness, on_body, signal_quality, current_values
     
-    def calculate_temp_quality(self, temp_data: np.ndarray, sample_rate: float) -> Tuple[float, float, float]:
+    def calculate_temp_quality(self, temp_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate temperature quality metrics"""
         if len(temp_data) < 4:
-            return 0.0, 0.0, 0.0
+            return 0.0, False, 0.0, {}
         
         # On-body detection (physiological range)
-        on_body = np.mean((temp_data >= 30.0) & (temp_data <= 40.0)) * 100
+        on_body = np.mean((temp_data >= 30.0) & (temp_data <= 40.0)) > 0.5
         
         # Signal quality
         in_range = np.mean((temp_data >= 30.0) & (temp_data <= 40.0))
@@ -108,11 +131,19 @@ class SlidingWindowQualityMonitor:
         
         completeness = 100.0
         
-        return completeness, on_body, signal_quality
+        # Current values
+        current_values = {
+            'temp': temp_data[-1],
+            'mean': np.mean(temp_data),
+            'min': np.min(temp_data),
+            'max': np.max(temp_data)
+        }
+        
+        return completeness, on_body, signal_quality, current_values
     
-    def calculate_aggregate_score(self, completeness: float, on_body: float, signal_quality: float) -> float:
-        """Calculate weighted aggregate score"""
-        return completeness * 0.3 + on_body * 0.3 + signal_quality * 0.4
+    def calculate_aggregate_score(self, completeness: float, signal_quality: float) -> float:
+        """Calculate weighted aggregate score (completeness and signal quality only)"""
+        return completeness * 0.4 + signal_quality * 0.6
 
 
 def load_e4_data(e4_folder: str) -> Dict:
@@ -285,6 +316,8 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
             
             # Calculate quality for each sensor in current window
             sensor_scores = {}
+            current_values = {}
+            on_body_votes = []
             
             for sensor_name, sensor_data in data.items():
                 window_data = get_window_data(sensor_data, current_time, window_size)
@@ -293,23 +326,27 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
                     sample_rate = sensor_data['sample_rate']
                     
                     if sensor_name == 'acc':
-                        comp, on_body, sig_qual = monitor.calculate_acc_quality(window_data)
+                        comp, on_body, sig_qual, vals = monitor.calculate_acc_quality(window_data)
                     elif sensor_name == 'bvp':
-                        comp, on_body, sig_qual = monitor.calculate_bvp_quality(window_data, sample_rate)
+                        comp, on_body, sig_qual, vals = monitor.calculate_bvp_quality(window_data, sample_rate)
                     elif sensor_name == 'eda':
-                        comp, on_body, sig_qual = monitor.calculate_eda_quality(window_data, sample_rate)
+                        comp, on_body, sig_qual, vals = monitor.calculate_eda_quality(window_data, sample_rate)
                     elif sensor_name == 'temp':
-                        comp, on_body, sig_qual = monitor.calculate_temp_quality(window_data, sample_rate)
+                        comp, on_body, sig_qual, vals = monitor.calculate_temp_quality(window_data, sample_rate)
                     else:
                         continue
                     
-                    aggregate = monitor.calculate_aggregate_score(comp, on_body, sig_qual)
+                    on_body_votes.append(on_body)
+                    aggregate = monitor.calculate_aggregate_score(comp, sig_qual)
                     sensor_scores[sensor_name] = {
                         'completeness': comp,
-                        'on_body': on_body,
                         'signal_quality': sig_qual,
                         'aggregate': aggregate
                     }
+                    current_values[sensor_name] = vals
+            
+            # Calculate combined on-body percentage (majority voting)
+            combined_on_body = (sum(on_body_votes) / len(on_body_votes) * 100) if on_body_votes else 0.0
             
             # Calculate overall aggregate across all sensors
             if sensor_scores:
@@ -333,15 +370,51 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
             output_lines.append(f"{'─'*70}")
             
             # Compact sensor display
-            output_lines.append("  SENSOR   | Complete | On-Body  | Signal Q | AGGREGATE")
-            output_lines.append(f"  {'─'*60}")
+            output_lines.append("  SENSOR   | Complete | Signal Q | AGGREGATE")
+            output_lines.append(f"  {'─'*48}")
             
             for sensor_name in ['acc', 'bvp', 'eda', 'temp']:
                 if sensor_name in sensor_scores:
                     s = sensor_scores[sensor_name]
-                    output_lines.append(f"  {sensor_name.upper():8} |  {get_quality_indicator(s['completeness'])}  |  {get_quality_indicator(s['on_body'])}  |  {get_quality_indicator(s['signal_quality'])}  |  {get_quality_indicator(s['aggregate'])}")
+                    output_lines.append(f"  {sensor_name.upper():8} |  {get_quality_indicator(s['completeness'])}  |  {get_quality_indicator(s['signal_quality'])}  |  {get_quality_indicator(s['aggregate'])}")
                 else:
-                    output_lines.append(f"  {sensor_name.upper():8} |    ---   |    ---   |    ---   |    ---")
+                    output_lines.append(f"  {sensor_name.upper():8} |    ---   |    ---   |    ---")
+            
+            # Combined on-body detection
+            output_lines.append(f"  {'─'*48}")
+            on_body_color = '\033[92m' if combined_on_body >= 75 else ('\033[93m' if combined_on_body >= 50 else '\033[91m')
+            on_body_status = "YES" if combined_on_body >= 50 else "NO"
+            output_lines.append(f"  {on_body_color}ON-BODY DETECTION: {combined_on_body:.0f}% ({on_body_status})\033[0m")
+            
+            output_lines.append(f"{'─'*70}")
+            
+            # Current signal values section
+            output_lines.append("  CURRENT SIGNAL VALUES:")
+            output_lines.append(f"  {'─'*60}")
+            
+            if 'acc' in current_values:
+                v = current_values['acc']
+                output_lines.append(f"  ACC:  X={v['x']:+6.3f}g  Y={v['y']:+6.3f}g  Z={v['z']:+6.3f}g  |Mag|={v['magnitude']:.3f}g")
+            else:
+                output_lines.append(f"  ACC:  ---")
+            
+            if 'bvp' in current_values:
+                v = current_values['bvp']
+                output_lines.append(f"  BVP:  Current={v['bvp']:+8.2f}  Mean={v['mean']:+8.2f}  StdDev={v['std']:.2f}")
+            else:
+                output_lines.append(f"  BVP:  ---")
+            
+            if 'eda' in current_values:
+                v = current_values['eda']
+                output_lines.append(f"  EDA:  Current={v['eda']:6.3f} μS  Mean={v['mean']:.3f}  Range=[{v['min']:.3f}-{v['max']:.3f}]")
+            else:
+                output_lines.append(f"  EDA:  ---")
+            
+            if 'temp' in current_values:
+                v = current_values['temp']
+                output_lines.append(f"  TEMP: Current={v['temp']:5.2f}°C  Mean={v['mean']:.2f}  Range=[{v['min']:.2f}-{v['max']:.2f}]")
+            else:
+                output_lines.append(f"  TEMP: ---")
             
             output_lines.append(f"{'─'*70}")
             
@@ -406,7 +479,7 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
 
 if __name__ == "__main__":
     # Default path for S2 subject
-    e4_folder = r"c:\Users\Leo\Desktop\Coding stuff\TYP\WESAD\S2\S2_E4_Data"
+    e4_folder = "S2/S2_E4_Data"
     
     # Run with 10x speed for demonstration (change to 1.0 for real-time)
     run_realtime_monitor(
