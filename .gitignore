@@ -1,41 +1,45 @@
-# Exclude subject data folders S3-S17
-S3/
-S4/
-S5/
-S6/
-S7/
-S8/
-S9/
-S10/
-S11/
-S13/
-S14/
-S15/
-S16/
-S17/
+# ── Subject data: only keep the extracted E4 CSV folders ─────────
+# Ignore everything inside subject folders first
+S*/
+!S*/
+S*/*
+# Un-ignore the extracted E4 data folders and their contents
+!S*/*_E4_Data/
+!S*/*_E4_Data/**
 
-# Large data files (>100MB)
+# PKL files (1-2 GB each)
 *.pkl
-*_respiban.txt
-*.zip
 
-# Python cache
+# E4 zip archives (extracted version is tracked instead)
+*_E4_Data.zip
+
+# RespiBAN raw data
+*_respiban.txt
+
+# Quest / readme (not needed for the app)
+*_quest.csv
+*_readme.txt
+
+# Temp files
+test.txt
+
+# ── Python ───────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Virtual environments
 venv/
 env/
 .venv/
 
-# IDE
+# ── Node / React ─────────────────────────────────────────────────
+node_modules/
+dashboard/frontend/build/
+
+# ── IDE / OS ─────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 .DS_Store
 Thumbs.db

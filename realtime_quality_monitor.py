@@ -26,6 +26,14 @@ class SlidingWindowQualityMonitor:
             'temp': 4.0     # Hz
         }
     
+    def calculate_sample_density(self, actual_samples: int, sensor: str) -> float:
+        """Calculate sample density: actual vs expected samples in the window.
+        Returns 0-100 percentage."""
+        expected = int(self.window_size * self.sample_rates[sensor])
+        if expected == 0:
+            return 0.0
+        return min(actual_samples / expected * 100, 100.0)
+
     def calculate_acc_quality(self, acc_data: np.ndarray) -> Tuple[float, bool, float, Dict]:
         """Calculate ACC quality metrics for a window"""
         if len(acc_data) < 10:
@@ -43,8 +51,8 @@ class SlidingWindowQualityMonitor:
         not_saturated = np.mean(np.abs(acc_data) < 1.9) * 100
         signal_quality = not_stuck * 0.3 + reasonable * 0.4 + not_saturated * 0.3
         
-        # Completeness (assume complete if we have data)
-        completeness = 100.0
+        # Sample density (actual vs expected)
+        sample_density = self.calculate_sample_density(len(acc_data), 'acc')
         
         # Current values
         current_values = {
@@ -54,7 +62,7 @@ class SlidingWindowQualityMonitor:
             'magnitude': magnitude[-1]
         }
         
-        return completeness, on_body, signal_quality, current_values
+        return sample_density, on_body, signal_quality, current_values
     
     def calculate_bvp_quality(self, bvp_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate BVP quality using spectral entropy"""
@@ -77,7 +85,8 @@ class SlidingWindowQualityMonitor:
         else:
             signal_quality = 0.0
         
-        completeness = 100.0
+        # Sample density
+        sample_density = self.calculate_sample_density(len(bvp_data), 'bvp')
         on_body = np.std(bvp_data) > 0.1
         
         # Current values
@@ -87,7 +96,7 @@ class SlidingWindowQualityMonitor:
             'std': np.std(bvp_data)
         }
         
-        return completeness, on_body, signal_quality, current_values
+        return sample_density, on_body, signal_quality, current_values
     
     def calculate_eda_quality(self, eda_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate EDA quality metrics"""
@@ -102,7 +111,8 @@ class SlidingWindowQualityMonitor:
         changes = np.abs(np.diff(eda_data)) * sample_rate
         signal_quality = np.mean(changes <= max_reasonable_change) * 100
         
-        completeness = 100.0
+        # Sample density
+        sample_density = self.calculate_sample_density(len(eda_data), 'eda')
         
         # Current values
         current_values = {
@@ -112,7 +122,7 @@ class SlidingWindowQualityMonitor:
             'max': np.max(eda_data)
         }
         
-        return completeness, on_body, signal_quality, current_values
+        return sample_density, on_body, signal_quality, current_values
     
     def calculate_temp_quality(self, temp_data: np.ndarray, sample_rate: float) -> Tuple[float, bool, float, Dict]:
         """Calculate temperature quality metrics"""
@@ -129,7 +139,8 @@ class SlidingWindowQualityMonitor:
         reasonable_changes = np.mean(changes <= max_change_rate)
         signal_quality = (in_range * 0.5 + reasonable_changes * 0.5) * 100
         
-        completeness = 100.0
+        # Sample density
+        sample_density = self.calculate_sample_density(len(temp_data), 'temp')
         
         # Current values
         current_values = {
@@ -139,11 +150,15 @@ class SlidingWindowQualityMonitor:
             'max': np.max(temp_data)
         }
         
-        return completeness, on_body, signal_quality, current_values
+        return sample_density, on_body, signal_quality, current_values
     
-    def calculate_aggregate_score(self, completeness: float, signal_quality: float) -> float:
-        """Calculate weighted aggregate score (completeness and signal quality only)"""
-        return completeness * 0.4 + signal_quality * 0.6
+    def calculate_aggregate_score(self, sample_density: float, on_body: bool,
+                                    signal_quality: float) -> float:
+        """Calculate weighted aggregate score.
+        3-factor: sample density (20%) + on-body (20%) + signal quality (60%).
+        Returns 0-100."""
+        on_body_pct = 100.0 if on_body else 0.0
+        return sample_density * 0.2 + on_body_pct * 0.2 + signal_quality * 0.6
 
 
 def load_e4_data(e4_folder: str) -> Dict:
@@ -317,7 +332,6 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
             # Calculate quality for each sensor in current window
             sensor_scores = {}
             current_values = {}
-            on_body_votes = []
             
             for sensor_name, sensor_data in data.items():
                 window_data = get_window_data(sensor_data, current_time, window_size)
@@ -336,17 +350,19 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
                     else:
                         continue
                     
-                    on_body_votes.append(on_body)
-                    aggregate = monitor.calculate_aggregate_score(comp, sig_qual)
+                    aggregate = monitor.calculate_aggregate_score(comp, on_body, sig_qual)
                     sensor_scores[sensor_name] = {
-                        'completeness': comp,
+                        'density': comp,
+                        'on_body': 100.0 if on_body else 0.0,
                         'signal_quality': sig_qual,
                         'aggregate': aggregate
                     }
                     current_values[sensor_name] = vals
             
-            # Calculate combined on-body percentage (majority voting)
-            combined_on_body = (sum(on_body_votes) / len(on_body_votes) * 100) if on_body_votes else 0.0
+            # Combined on-body detection using EDA + TEMP (most reliable indicators)
+            eda_on_body = sensor_scores.get('eda', {}).get('on_body', 0.0) == 100.0
+            temp_on_body = sensor_scores.get('temp', {}).get('on_body', 0.0) == 100.0
+            combined_on_body = 100.0 if (eda_on_body and temp_on_body) else 0.0
             
             # Calculate overall aggregate across all sensors
             if sensor_scores:
@@ -370,15 +386,15 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
             output_lines.append(f"{'─'*70}")
             
             # Compact sensor display
-            output_lines.append("  SENSOR   | Complete | Signal Q | AGGREGATE")
-            output_lines.append(f"  {'─'*48}")
+            output_lines.append("  SENSOR   | Density  | On-Body  | Signal Q | AGGREGATE")
+            output_lines.append(f"  {'─'*60}")
             
             for sensor_name in ['acc', 'bvp', 'eda', 'temp']:
                 if sensor_name in sensor_scores:
                     s = sensor_scores[sensor_name]
-                    output_lines.append(f"  {sensor_name.upper():8} |  {get_quality_indicator(s['completeness'])}  |  {get_quality_indicator(s['signal_quality'])}  |  {get_quality_indicator(s['aggregate'])}")
+                    output_lines.append(f"  {sensor_name.upper():8} |  {get_quality_indicator(s['density'])}  |  {get_quality_indicator(s['on_body'])}  |  {get_quality_indicator(s['signal_quality'])}  |  {get_quality_indicator(s['aggregate'])}")
                 else:
-                    output_lines.append(f"  {sensor_name.upper():8} |    ---   |    ---   |    ---")
+                    output_lines.append(f"  {sensor_name.upper():8} |    ---   |    ---   |    ---   |    ---")
             
             # Combined on-body detection
             output_lines.append(f"  {'─'*48}")
@@ -438,7 +454,7 @@ def run_realtime_monitor(e4_folder: str, window_size: float = 10.0, update_inter
             output_lines.append(f"{'='*70}")
             output_lines.append("  Press Ctrl+C to stop")
             
-            # Move cursor to home position and overwrite (no flash)
+            # Move cursor to home position and overwrite
             sys.stdout.write('\033[H')  # Move cursor to top-left
             print('\n'.join(output_lines))
             sys.stdout.flush()
