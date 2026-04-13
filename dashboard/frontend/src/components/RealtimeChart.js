@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 
 /**
@@ -20,23 +20,29 @@ const COLORS = {
 };
 
 export default function RealtimeChart({ history, streaming }) {
+  const [showSensors, setShowSensors] = useState(false);
+
   const traces = useMemo(() => {
     if (!history || history.length === 0) return [];
 
     const times = history.map((w) => w.time / 60);
 
+    const overallTrace = {
+      x: times,
+      y: history.map((w) => w.overall),
+      type: "scatter",
+      mode: "lines",
+      line: { width: 3, color: COLORS.overall },
+      fill: "tozeroy",
+      fillcolor: "rgba(79,195,247,0.08)",
+      name: "Overall",
+      hovertemplate: "<b>Overall: %{y:.1f}%</b><extra></extra>",
+    };
+
+    if (!showSensors) return [overallTrace];
+
     return [
-      {
-        x: times,
-        y: history.map((w) => w.overall),
-        type: "scatter",
-        mode: "lines",
-        line: { width: 3, color: COLORS.overall },
-        fill: "tozeroy",
-        fillcolor: "rgba(79,195,247,0.08)",
-        name: "Overall",
-        hovertemplate: "<b>Overall: %{y:.1f}%</b><extra></extra>",
-      },
+      overallTrace,
       ...["acc", "bvp", "eda", "temp"].map((s) => ({
         x: times,
         y: history.map((w) => w[s]?.aggregate ?? null),
@@ -48,7 +54,7 @@ export default function RealtimeChart({ history, streaming }) {
         hovertemplate: `<b>${s.toUpperCase()}: %{y:.1f}%</b><extra></extra>`,
       })),
     ];
-  }, [history]);
+  }, [history, showSensors]);
 
   const layout = useMemo(
     () => ({
@@ -139,12 +145,22 @@ export default function RealtimeChart({ history, streaming }) {
   }
 
   return (
-    <Plot
+    <div>
+      <div className="chart-toggle">
+        <button
+          className={`chart-toggle-btn ${showSensors ? "active" : ""}`}
+          onClick={() => setShowSensors((v) => !v)}
+        >
+          {showSensors ? "Hide Sensors" : "Show Sensors"}
+        </button>
+      </div>
+      <Plot
       data={traces}
       layout={layout}
       config={{ displayModeBar: false, responsive: true }}
       style={{ width: "100%", height: "260px" }}
       useResizeHandler
     />
+    </div>
   );
 }

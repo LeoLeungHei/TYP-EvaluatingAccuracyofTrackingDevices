@@ -325,7 +325,7 @@ body {
 
 .metric-row {
   display: grid;
-  grid-template-columns: 56px 1fr 36px;
+  grid-template-columns: 80px 0.8fr 36px;
   align-items: center;
   gap: 8px;
 }
@@ -371,6 +371,35 @@ body {
   height: 200px;
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.chart-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.chart-toggle-btn {
+  padding: 4px 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chart-toggle-btn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.chart-toggle-btn.active {
+  background: rgba(79,195,247,0.12);
+  color: var(--accent-blue);
+  border-color: rgba(79,195,247,0.3);
 }
 
 /* ── Loading / Error (shared) ───────────────────────────────────── */

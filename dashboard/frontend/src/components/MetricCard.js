@@ -43,9 +43,6 @@ export default function MetricCard({ sensor, label, data, color, streaming }) {
     <div className="metric-card" style={{ borderTopColor: color }}>
       <div className="metric-header">
         <span className="metric-sensor" style={{ color }}>{sensor}</span>
-        <span className={`metric-onbody ${onBody ? "on" : "off"}`}>
-          {hasData ? (onBody ? "On-body" : "Off-body") : "—"}
-        </span>
       </div>
 
       <div className="metric-score" style={{ color: hasData ? qualityColor(agg) : "var(--text-secondary)" }}>
@@ -56,12 +53,12 @@ export default function MetricCard({ sensor, label, data, color, streaming }) {
       {/* Sub-metrics */}
       <div className="metric-breakdown">
         <div className="metric-row">
-          <span className="metric-row-lbl">Density</span>
+          <span className="metric-row-lbl">Completeness</span>
           <MiniBar value={density} color="var(--accent-blue)" />
           <span className="metric-row-val">{hasData ? `${density.toFixed(0)}%` : "—"}</span>
         </div>
         <div className="metric-row">
-          <span className="metric-row-lbl">Signal Q</span>
+          <span className="metric-row-lbl">Quality</span>
           <MiniBar value={sigQ} color={qualityColor(sigQ)} />
           <span className="metric-row-val">{hasData ? `${sigQ.toFixed(0)}%` : "—"}</span>
         </div>

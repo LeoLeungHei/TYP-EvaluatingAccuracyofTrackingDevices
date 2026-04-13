@@ -118,7 +118,6 @@ export default function App() {
       <header className="header">
         <div className="header-left">
           <h1>Data Quality Monitor</h1>
-          <span className="header-sub">10-Second Sliding Window</span>
         </div>
         <div className="header-controls">
           <select
@@ -149,11 +148,11 @@ export default function App() {
               onChange={(e) => setSpeed(Number(e.target.value))}
               disabled={streaming}
             >
-              <option value={1}>1×</option>
-              <option value={5}>5×</option>
-              <option value={10}>10×</option>
-              <option value={25}>25×</option>
-              <option value={50}>50×</option>
+              <option value={1}>1x</option>
+              <option value={5}>5x</option>
+              <option value={10}>10x</option>
+              <option value={25}>25x</option>
+              <option value={50}>50x</option>
             </select>
           </label>
 
