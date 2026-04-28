@@ -302,7 +302,7 @@ def run_all_tests(subject_id: str = "S2"):
             all_pass = False
 
     overall = "ALL TESTS PASSED" if all_pass else "SOME TESTS FAILED"
-    print(f"\n  >>> {overall} <<<")
+    print(f"\n  {overall} ")
     print("=" * 60)
     return all_pass
 

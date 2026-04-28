@@ -1,0 +1,981 @@
+Evaluating and Communicating the Reliability of Data from Wearable Devices for Health Tracking 
+
+Leo Leung Hei, Date of Submission:  
+
+B.Sc. Computer Science 
+
+	 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Declaration  
+
+I certify that the material contained in this dissertation is my own work and does not contain unreferenced or unacknowledged material. I also warrant that the above statement applies to the implementation of the project and all associated documentation. I consent to this being stored electronically and copied for assessment purposes, including the school's use of plagiarism detection systems in order to check the integrity of assessed work. I agree with my dissertation being placed in the public domain, with my name explicitly included as the author of the work. 
+
+Name: Leo Leung Hei 
+
+Date:  
+
+Shape 
+
+ 
+
+Abstract 
+
+Wearable health devices are increasingly used in clinical and consumer settings, yet the reliability of the data they produce is rarely communicated to users. This project developed and evaluated a data quality assessment system for the Empatica E4 wristband, comprising a multi-dimensional quality framework and an interactive visualisation dashboard.
+
+The quality framework evaluates each of the E4's four sensor modalities — accelerometer, blood volume pulse, electrodermal activity, and skin temperature — across three dimensions: data completeness, on-body detection, and signal quality. A sliding window approach produces per-window quality scores that are streamed in real time to a React dashboard via a Flask backend using Server-Sent Events.
+
+The system was validated against all nine subjects from the WESAD dataset. Mean overall quality scores ranged from 80.2% to 83.2% across subjects, with blood volume pulse consistently the weakest modality (mean 59.1%) and electrodermal activity the most reliable (mean 99.7%). Signal validity testing against simultaneously recorded chest-worn reference signals confirmed that all four automated tests passed. A user evaluation with five participants showed overall positive reception, with colour-coded quality indicators receiving the highest mean rating of 4.6 out of 5. 
+
+Shape 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Table of Contents 
+
+​​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​ 
+
+​​ 
+
+ 
+
+Shape 
+
+ 
+
+1 Introduction 
+
+The growth of wearable health devices has changed personal health monitoring, enabling continuous tracking of physiological metrics including heart rate, sleep patterns, physical activity, and other biometric data [1]. However, the reliability of data collected by these devices remains a significant concern that directly changes clinical decision-making, user trust, and the overall utility of wearable technology [2]. This project addresses the need for transparent communication of data quality to both healthcare professionals and end-users through the development of a comprehensive quality assessment system and intuitive visualisation interfaces. 
+
+1.1 Overall Aim of the Project 
+
+The primary aim of this project is to investigate the reliability of wearable device data through systematic quality assessments and to develop effective visualisation strategies that communicate data uncertainty to both clinical professionals and consumers. The developed system evaluates data across multiple quality dimensions and presents reliability information through interactive visualisations tailored to different user’s expertise levels. 
+
+1.2 Problem Overview 
+
+Research has shown substantial data quality issues across wearable devices that affect their clinical utility. Studies show that data completeness varies significantly depending on recording methods, with streaming approaches experiencing up to 49% data loss compared to just 9% for onboard storage [3]. Signal quality varies widely by sensor type, with blood volume pulse (BVP) measurements showing the lowest reliability at a mean quality score of 60.2%, followed by electrodermal activity (EDA) at 70.4%, while temperature measurements prove most reliable at 96.1% [3].  
+
+Consumer-grade wearables show variable accuracy across different biometrics. Heart rate measurements often underestimate actual values by 7-9 beats per minute during exercise; step counts show 9-24% error rates, and energy expenditure calculations display 6-43% error rates [4]. These inconsistencies raise concerns about the suitability of using such data for medical decision-making without clear communication of uncertainty.  
+
+Furthermore, healthcare professionals often lack training in interpreting wearable data, while consumers may over-rely on device metrics without understanding their limitations [5]. This knowledge gap highlights the need for transparent communication of data quality that adapts to the user's technical ability. 
+
+1.3 Project Motivation and Significance 
+
+The main motivation for this project stems from the growing integration of wearable devices into healthcare settings and personal health management [2], despite persistent concerns about data reliability. Without clear communication of data quality, clinicians risk making decisions based on unreliable information, and consumers may develop inappropriate health behaviours based on inaccurate measurements. 
+
+This project bridges the gap between technical data quality assessment and user-facing communication. By developing both the algorithmic framework for evaluating data quality and the interface for communicating uncertainty, this work contributes to safer and more informed use of wearable health technology. The insights gained will help set up the best practices for uncertainty visualisation in both health contexts, and advance understanding of human-computer interaction for viewing health data interfaces. 
+
+1.4 Project Aims and Objectives 
+
+    Create a Data Quality Assessment Framework: Develop a comprehensive framework to evaluate wearable device data across multiple metrics including data completeness, on-body detection, and signal quality assessment, implementing algorithms adapted from established research methodologies. 
+
+    Design Uncertainty Visualisation Techniques: Designing and implementing multiple visualisation approaches to communicate uncertainty effectively, including colour-coded quality indicators and interactive time-series displays. 
+
+ 
+
+    Build an Interactive Dashboard: Develop an interactive web-based dashboard integrating the quality assessment framework with specialized visualisations, displaying wearable device data alongside reliability indicators and allowing users to explore quality variations over time and across sensor modalities. 
+
+ 
+
+    Evaluate Effectiveness Through User Studies: Conduct user evaluation through task-based usability testing with 5-20 participants to assess whether users can correctly interpret uncertainty data, whether reliability communication affects trust, and whether visualisations support better decision-making. 
+
+1.5 Report Structure 
+
+Chapter 2 provides background on data quality evaluation methodologies, uncertainty visualisation techniques, and related research on wearable device reliability. Chapter 3 presents the requirements of analysis and design decisions for both the quality assessment framework and visualisation interface. Chapter 4 details the implementation of the system, including algorithm development, dashboard construction, and technical challenges met. Chapter 5 presents the system in operation, demonstrating the quality assessment results produced across all nine WESAD subjects. Chapter 6 evaluates the system through signal validity testing and a user study, and discusses the system's limitations. Chapter 7 concludes by reviewing whether project aims were met, discussing lessons learned, and proposing future work directions. 
+
+  
+
+2 Background 
+
+This chapter examines the technical context and related research that forms the foundation for this project. It discusses established work on data quality evaluation in wearable devices, uncertainty communication in health contexts, and human-computer interaction principles for health data interfaces. 
+
+2.1 Technical Context 
+
+Data quality evaluation in wearable monitoring devices requires multi-dimensional assessment approaches that account for various sources of unreliability. Böttcher et al. [3] developed a comprehensive framework for evaluating data quality from the Empatica E4 wristband used in epilepsy monitoring. Their method assessed quality across three primary dimensions: data completeness (whether expected samples were recorded), on-body detection (whether the device was actually worn), and signal quality (reliability of physiological measurements). 
+
+The framework employed sensor-specific signal processing techniques tailored to each data modality. For BVP data, spectral entropy calculations showed periods of poor signal quality, revealing that BVP had the lowest reliability among all modalities with a mean quality score of only 60.2%. EDA evaluation used rate of amplitude change analysis, achieving 70.4% mean quality. Temperature measurements were most reliable at 96.1% mean quality, while accelerometer data was evaluated through threshold-based algorithms for detecting device removal. 
+
+Critically, the study proved that data collection methods significantly affect completeness, with streaming approaches losing up to 49% of data compared to 9% loss for onboard storage. This finding has important implications for real-time monitoring applications and highlights the need for quality assessment systems that can show and communicate these reliability variations. 
+
+Uncertainty in health wearables arises from multiple sources including sensor limitations, algorithmic processing decisions, contextual factors e.g. device placement and user activity, and individual physiological differences. Research by Knowles found that these uncertainties are often invisible to users, leading to potential misinterpretation of data [5]. The work emphasized that both healthcare professionals and consumers require proper training and tools to understand the limitations of wearable data. 
+
+Uncertainty visualisation represents a challenging domain within information visualisation [6]. Effective uncertainty communication must balance providing sufficient information for informed decision-making while avoiding overwhelming users with technical details. In health contexts, this challenge is amplified because decisions based on uncertain data can have significant consequences for wellbeing [7]. 
+
+2.2 Related Work and Existing Systems 
+
+This section examines current existing work on wearable device accuracy, data quality assessment frameworks, uncertainty communication, and usability evaluation, and discusses how this project builds upon and addresses gaps in each area.  
+
+Fuller et al. [4] conducted a review of the reliability and validity of commercially available wearable devices for measuring steps, energy expenditure, and heart rate. Their analysis found that heart rate measurements from consumer wearables underestimated actual values by 7-9 beats per minute during exercise, step counts shown 9-24% error rates, and energy expenditure calculations displayed 6-43% error rates across devices. These findings show that consumer-grade wearables produce data with significant variability, yet few devices communicate this uncertainty to users. The review highlighted a gap in how reliability information is presented at the point of use, which this project directly addresses through its quality visualisation dashboard.   
+
+Shei et al. [8] examined the gap between the marketing claims of wearable activity trackers and their actual measurement capabilities. Their work highlights that consumers often perceive wearable data as precise, when in reality the measurements are subject to substantial error. This overconfidence in device accuracy is problematic in health contexts where decisions may be based on unreliable metrics. The present project responds to this concern by making data reliability visible and interpretable, rather than leaving users to assume accuracy.   
+
+The most relevant prior work is the data quality evaluation framework developed by Böttcher et al. [3], which assessed data from the Empatica E4 wristband in epilepsy monitoring settings. Their framework evaluated quality across three dimensions: data completeness, on-body detection, and signal quality, using sensor-specific signal processing techniques. As discussed in Section 2.1, they found significant quality variations across sensor modalities and recording methods. But their work focused on retrospective batch analysis for clinical research, producing static reports rather than real-time feedback. Their quality scores were presented in tabular and statistical formats aimed at researchers, with no interactive interface or consumer-facing communication. This project extends their framework by using the same 3-dimensional assessment into a real-time sliding window system with an interactive dashboard designed for both clinical and non-expert users.  
+
+Knowles [5] investigated the sources and implications of uncertainty in wearable health data, identifying that uncertainty arises from sensor limitations, algorithmic processing decisions, contextual factors e.g. device placement and user activity, and individual physiological differences. The research found that uncertainties are often invisible to users, and that both healthcare professionals and consumers lack adequate tools to understand the limitations of wearable data. Knowles argued that transparency about data quality should be a design priority rather than an afterthought. This project operationalises that recommendation by embedding quality indicators directly into the data viewing experience, ensuring that users encounter reliability information alongside the physiological data itself.  
+
+Existing commercial platforms for wearable data, such as the Empatica Care portal and Fitbit's health dashboard, present physiological data through time-series charts and summary statistics. However, these platforms typically do not display data quality metrics alongside physiological measurements [9]. When quality issues happen, e.g. gaps in recording or periods of poor signal, the data is either silently interpolated or absent. No widely available consumer or clinical dashboard currently uses a real-time quality assessment with interactive exploration of reliability across sensor modalities. This project addresses that gap by combining a quality assessment framework with a visualisation interface that presents data completeness, on-body status, and signal quality alongside the data.   
+
+2.3 Justification of Design Choices  
+
+The system architecture, technology stack, and dataset choice for this project were chosen to align with the aims, while also ensuring practical feasibility.  
+
+The WESAD (Wearable Stress and Affect Detection) dataset [10] was chosen as the primary data source for development and validation. WESAD holds physiological recordings from an Empatica E4 wristband alongside a RespiBAN chest-worn device, collected from multiple participants during structured stress and relaxation protocols. The E4 data includes accelerometer (ACC), blood volume pulse (BVP), electrodermal activity (EDA), and skin temperature (TEMP) recordings [11]. This dataset was chosen for several reasons: it provides the same sensor modalities studied in the Böttcher et al. [3] framework that this project adapts; it is publicly available and well-documented; the structured protocol creates natural variations in data quality as participants transition between conditions; and the included chest-worn reference data allows for potential cross-device validation comparisons.  
+
+Python was selected as the backend language for the quality assessment framework due to its collection of libraries built for scientific work. The framework relies on NumPy for numerical operations, SciPy for signal processing tasks, e.g. spectral entropy calculation, periodogram computation, and Pandas for data loading and manipulation. These libraries provide the mathematical operations needed for quality assessment, reducing development time, and the risk of implementation errors.  
+
+Flask was chosen as the web server framework for its lightweight design for a single-purpose API backend. The backend exposes REST endpoints for subject listing, metadata retrieval, and quality computation, as well as a Server-Sent Events (SSE) endpoint for real-time streaming. SSE was preferred over WebSockets for the streaming functionality because the data flow is unidirectional, as the server pushes quality assessment results to the client as sliding windows are processed. SSE offers this capability with less implementation complexity.  
+
+The frontend was built using React to enable a modular and maintainable interface. The dashboard includes discrete components for the aggregate quality score, individual sensor metric boxes, a status bar, and the timeline chart, each receiving data through React state management. Plotly.js was used for the real-time timeline chart because it offers interactive plotting capabilities including hover tooltips and zoom, handling dynamic data updates efficiently. The combination of React's component model and Plotly's charting library allowed development of a responsive interface without requiring a custom rendering implementation. 
+
+A sliding window approach with a 10-second window and 2-second step was used for quality assessment. This design mirrors the methodology of Böttcher et al. [3] while enabling real-time simulation of continuous monitoring. The 10-second window provides sufficient samples for meaningful statistical and spectral analysis across all sensor modalities, including the lower-rate EDA and temperature signals at 4 Hz, which yield 40 samples per window. The 2-second step provides granular temporal resolution while keeping computational demands manageable for real-time display.  
+
+The three-factor quality metric, completeness (20%), on-body detection (20%), and signal quality (60%), follows the dimensional structure set up by Böttcher et al. [3], with weighting adjusted to emphasise signal quality as the factor most relevant to data utility. Completeness reflects whether expected samples were recorded, on-body detection determines whether the device was worn, and signal quality evaluates the physiological plausibility of the measurements using sensor-specific techniques. This weighted aggregate provides a single interpretable score per sensor per window while preserving the ability to inspect individual factors. 
+
+  
+
+3 Design 
+
+The chapter covers the overall system architecture, the design of the quality assessment framework and its sensor-specific algorithms, and the layout and interaction design of the dashboard interface. 
+
+3.1 System Architecture 
+
+The system uses a client-server architecture with three layers: a data processing layer, an API backend, and a frontend interface. 
+
+ 
+The data processing layer is a Python class (SlidingWindowQualityMonitor) that loads E4 CSV files, extracts time windows from sensor data, and computes quality metrics for each of the four sensor modalities. The monitor operates on each window: given a start time and window size, it extracts the relevant data slice and returns quality metrics without maintaining internal state between windows. This stateless design allows the same class to be used for both batch processing and real-time streaming. 
+
+Each CSV file follows a consistent format, the first line contains the Unix timestamp, the second line contains the sampling rate, and the following lines contain the sensor readings. The data loading function reads these headers, computes timestamps for each sample based on the initial timestamp and sampling rate and stores the result as NumPy arrays for numerical processing later on. 
+
+The API layer is a Flask web server that shows the quality monitor through REST endpoints and a Server-Sent Events (SSE) streaming endpoint. 
+
+Endpoint 
+	
+
+Method 
+	
+
+Description 
+
+/api/subjects 
+	
+
+GET 
+	
+
+Lists available subjects by scanning for directories with E4 data 
+
+/api/overview/<subject_id> 
+	
+
+GET 
+	
+
+Returns recording metadata: duration, sample rates, total sample counts 
+
+/api/quality/<subject_id> 
+	
+
+GET 
+	
+
+Computes and returns the full quality timeline using the sliding window 
+
+/api/signals/<subject_id>/<sensor> 
+	
+
+GET 
+	
+
+Returns down-sampled raw signal values for chart plotting 
+
+/api/stream/<subject_id> 
+	
+
+GET 
+	
+
+SSE stream that replays quality scores in real time 
+
+ 
+Subject data is cached in memory after first load to avoid redundant file I/O on upcoming API calls. SSE was chosen over WebSocket because the data flow is unidirectional, only the server pushes results to the client, and SSE provides built-in browser reconnection support with less implementation required. 
+
+The frontend is a React single-page application that connects to the Flask API. During development, a proxy middleware forwards API requests from the React development server (port 3000) to the Flask backend (port 5000). In production, the React application should be compiled to static files and served directly by Flask. 
+
+3.1.1 Hardware Requirements 
+
+The system has minimal hardware requirements due to its lightweight technology stack. The most computationally demanding operation is the BVP spectral entropy calculation, which runs scipy's periodogram on 640 samples every two seconds at default playback speed; this is well within the capability of any modern processor. A machine with a dual-core CPU, 4 GB of RAM, and a standard hard drive is sufficient to run the Flask backend and React frontend simultaneously. A modern web browser (Chrome, Firefox, or Edge) is required for the dashboard interface. No GPU or specialist hardware is needed. In a live-device deployment where data arrives over a network stream rather than from pre-recorded CSV files, the storage requirement would reduce to near zero as data would not need to be held on disk. 
+
+3.2 Quality Assessment Framework 
+
+The framework evaluates each sensor modality across the three dimensions of data completeness, On-body detection, and signal quality. This follows the structure established by Böttcher et al. [3] and adapted for the sliding window operation. A 10-second window with a 2-second step was used as the default configuration. The 10-second window provides samples for statistical and spectral analysis across all 3 sensor modalities, including the lower-rate EDA and temperature signals at 4 Hz which return 40 samples per window. Meanwhile, the 2-second step provides granular temporal resolution while keeping computational demands manageable for real-time viewing. 
+
+3.2.1 Data Completeness 
+
+This metric measures whether the expected number of samples are present in each window. The expected sample count is calculated as the window duration (10 seconds) multiplied by the sensor's known sampling rate (e.g. 32-Hz). The completeness score is the ratio of actual to expected samples, expressed as a percentage. For example, a 10-second window of ACC data at 32 Hz should have 320 samples. If 310 are present, the completeness score is 96.9%.  
+
+This metric detects data gaps caused by transmission failures, device disconnection, or recording interruptions. Unlike the Böttcher et al. [3] approach which computed completeness over entire recordings, this design evaluates completeness per window, which allows for detection of localised data loss that would be averaged out in a whole-recording metric [12]. 
+
+3.2.2 On-Body Detection 
+
+On-body detection decides if the device was being worn during each time window. Different sensors provide different indicators of on-body status: 
+
+Accelerometer 
+
+The variance of the acceleration magnitude is compared against a threshold of 0.01. A worn device exhibits micro-movements even during rest, producing variance above this threshold, whereas a stationary off-body device produces near-zero variance. This metric is usually the least reliable for on body detection, due to the variance threshold being ambiguous from external vibrations without being worn, or low variance during genuine still-body periods. 
+
+Electrodermal Activity 
+
+EDA readings are checked against a threshold of 0.05 μS. Skin contact produces measurable electrodermal activity above this level; an off-body device reads near zero. This is exceptionally reliable for on-body detection due to EDA requiring electrical conductance through the skin to get values, which easily produces a binary signal of false when off-body. 
+
+Temperature 
+
+Temperature readings are checked against the physiological skin temperature range of 30-40°C. Values within this range indicate body contact; ambient temperature readings typically fall outside this range. This is also reliable due to the sensor needing skin contact to get values between 30-40°C, with anything being outside this range as off-body. 
+
+For the combined on-body status displayed in the dashboard, the system requires both EDA and temperature to indicate that the device is on-body, as these two modalities provide the most reliable indicators of skin contact. 
+
+3.2.3 Signal Quality 
+
+Signal quality evaluates whether the recorded data is plausible physiological signals, using sensor-specific techniques. 
+
+Blood Volume Pulse (BVP) 
+
+BVP uses spectral entropy of the heart rate frequency range (0.5–4 Hz). The power spectral density is computed using a periodogram, and the spectral entropy of the normalised power distribution in the heart rate band is calculated. A clean BVP signal with a dominant heart rate frequency produces low entropy (concentrated spectral power), while a noisy signal produces high entropy (dispersed spectral power) [13]. The quality score is calculated as: 
+
+(1 − spectral_entropy / max_entropy) x 100% 
+
+Electrodermal Activity (EDA) 
+
+EDA uses rate of amplitude change. The differences between consecutive samples are multiplied by the sampling rate to obtain the rate of change in μS/second. The proportion of changes at or below 0.5 μS/second is taken as the quality score. EDA is overall a low rate of change signal, therefore rapid changes usually show motion artifacts or electrical noise rather than genuine electrodermal responses [14, 15]. 
+
+Temperature 
+
+The temperature signal quality uses two factors with 50/50 weighting: the proportion of readings within the physiological range of 30-40°C, and the proportion of inter-sample changes at or below 0.1°C per second. Sudden and large temperature changes show sensor displacement/artifacts rather than physiological changes. 
+
+Accelerometer 
+
+The signal quality combines three checks with respective weights of 30%, 40%, and 30%: whether the signal variance goes above 0.001 (detecting stuck signals), whether the acceleration magnitude falls within the reasonable range of 0.1-3.0g, and whether individual axis values stay below the sensor saturation point of ±1.9g. 
+
+3.2.4 Aggregate Score 
+
+The aggregate quality score for each sensor is a weighted combination of the three dimensions: 
+
+aggregate = completeness x 0.2 + on_body x 0.2 + signal_quality x 0.6 
+
+where on_body is 100 if the sensor indicates on-body and 0 otherwise. The weighting assigns 60% to signal quality as it is the most direct indicator of data utility: data that is complete and recorded on-body but contains poor signal is not useful for analysis. The overall quality score displayed in the dashboard is the mean of the four per-sensor aggregate scores. 
+
+3.3 Dashboard Interface Design 
+
+The dashboard interface was designed to present information at multiple levels of detail, supporting both quick assessment and detailed investigation by both end consumers and medical professionals. 
+
+3.3.1 Layout & Component Structure 
+
+The dashboard uses a grid layout with six primary components: 
+
+    Aggregate Score (top-left): A circular progress ring displaying the overall quality percentage with colour coding, accompanied by statistics (average, minimum, and maximum scores). This part provides the main at-a-glance quality indicator. 
+
+    Four Sensor Metric Cards (top row and bottom-right): Individual cards for ACC, BVP, EDA, and TEMP, each showing the sensor's aggregate quality score with bars for completeness and signal quality sub-metrics displayed. Each card is colour-coded with a distinct colour (purple for ACC, red for BVP, green for EDA, orange for TEMP) for easy visual differentiation. 
+
+    Timeline Chart (bottom-left, spanning three columns): A Plotly.js interactive line chart showing the overall quality score over time, with optional per-sensor overlay traces. The chart includes colour-coded background bands indicating the quality thresholds (green zone above 80%, amber zone 60–80%, red zone below 60%) and dashed threshold lines for reference. Users can toggle between overall-only and per-sensor views, and use Plotly's built-in zoom, pan, and hover features to inspect specific time periods. 
+
+3.3.2 Status Bar and Controls 
+
+A status bar at the top of the application shows the current system state: idle (grey), live (green with animation), or complete (blue). During streaming, the bar displays the elapsed time and an on-body/off-body indicator showing if the device is currently detected as worn based on the combined EDA + TEMP on-body signals. A progress bar shows the percentage of the recording that has been processed. 
+
+The header controls allow users to select different sample files from a dropdown, choose a playback speed (1x, 5x, 10x, 25x, or 50x), and start/stop the monitoring stream. Different sample files and speed controls will be disabled if active streaming is implemented to prevent state conflicts. 
+
+3.3.3 Colour Coding  
+
+The colour scheme follows a convention applied consistently across all components, with green for scores of 80% and above, amber for scores between 60-80%, and red for scores below 60%. They are respectively labelled excellent, acceptable and poor. 
+
+3.3.4 Real-Time Data Flow 
+
+The real-time data flow uses Server-Sent Events (SSE) to push results from the backend to the frontend. When the user starts the monitor, the React application opens an EventSource connection to the /api/stream endpoint. The backend then processes each sliding window, computes all the metrics, and sends the results as a JSON-formatted SSE event. The frontend parses each event, updates the current state with the aggregate score and metric cards, and appends the result to the timeline chart (rolling history buffer). The chart is capped at 150 entries (approximately 5 minutes of data) to keep optimal rendering performance. When the backend has processed the entire recording, it sends a final event with a done flag, and the frontend closes the connection and updates the status bar to show completion. 
+
+  
+
+4 Implementation 
+
+This chapter describes how the design from Chapter 3 was implemented. It covers the key technical decisions made during development, the structure of the code, and the challenges encountered. The chapter follows the same three-layer structure with data processing, API backend, and frontend, then discussing the main difficulties and how they were resolved. 
+
+4.1 Data Loading & Timestamp Reconstruction 
+
+The E4 CSV files do not include timestamps on each row. Each file encodes its timing in two header lines, where the first holds the initial Unix timestamp, and the second holds the sampling rate in Hz. All other lines are the sensor readings. The data loader reads these two headers, then reconstructs a timestamp for every sample using: 
+
+timestamps[i] = initial_timestamp + i / sample_rate 
+
+This produces a NumPy array of timestamps aligned to the sensor readings. For single-channel sensors (BVP, EDA, TEMP), the data is stored as a one-dimensional array. For the accelerometer (ACC), the three-axis readings (x, y, z) are stored as a 2D array. The ACC values in the CSV are integer readings from the accelerometer and must be divided by 64 to convert to g-units. 
+
+Each different sensor has different sampling rates, ACC at 32 Hz, BVP at 64 Hz, EDA and TEMP at 4 Hz. This means that for a given 10-second window, the number of samples varies considerably, with 640 for BVP, 320 for ACC, and only 40 for EDA and TEMP. The window extraction function handles this by using a Boolean mask over the precomputed timestamp array rather than using a fixed number of samples per window: 
+
+mask = (timestamps >= start_time) & (timestamps < start_time + window_size) 
+
+return data[np.where(mask)] 
+
+This approach works the same regardless of sample rate, and it handles any gaps in the data e.g. if samples are missing, fewer indices satisfy the mask, and the completeness metric detects the change and displays it. 
+
+4.2 Quality Calculations 
+
+The quality calculations use the same design in Section 3.2. 
+
+4.2.1 BVP Spectral Entropy 
+
+The calculation uses SciPy's periodogram function to calculate the power spectral density, then uses only the frequency bins within the heart rate range (0.5–4 Hz). The spectral entropy is calculated using SciPy's entropy function on the normalised power distribution, and the quality score is shown as a part of the maximum possible entropy: 
+
+signal_quality = (1 - spectral_entropy / log(n_bins)) * 100 
+
+A minimum of 64 samples is needed for a useful periodogram at 64 Hz sampling. With the 10-second window providing 640 BVP samples, this threshold is fulfilled. The current method was chosen over Welch's method because the sliding window is already small, subdividing a 10-second segment further would reduce frequency resolution without a significant smoothing benefit being expressed. 
+
+4.2.2 EDA Rate of Change 
+
+This calculation uses the absolute first difference of consecutive samples and multiplies by the sampling rate to convert from per-sample change to μS/second. The proportion of changes at or below 0.5 μS/second shows the quality score. At 4 Hz, this means the per-sample threshold is 0.125 μS, which is sensitive enough to detect motion artifacts but tolerable enough to allow true skin conductance responses, which usually rise at 0.1-0.3 μS/second. 
+
+4.2.3 Accelerometer Multi-Factor Quality 
+
+The quality score combines three checks with separate weights. The stuck-signal check uses a variance threshold, because quantisation effects in the accelerometer can produce small fluctuations even in a stuck sensor. The magnitude range check (0.1-3.0 g) allows for the full range of daily activities from rest to brisk movement, while flagging implausible readings. The saturation check uses ±1.9 g rather than the full ±2.0 g range of the accelerometer to provide a margin, where readings near the absolute limit are often clipped and unreliable even if they are within the range. 
+
+4.3 Flask API & SSE Streaming 
+
+The Flask backend uses two different access patterns: batch requests (REST endpoints) and real-time streaming (SSE endpoint). Both share the same quality calculation code, which is the SlidingWindowQualityMonitor class. This ensures that batch and streaming results are the same. 
+
+4.3.1 Data Caching 
+
+Subject data is cached in a dictionary after first load. Each entry stores the loaded NumPy arrays, the precomputed start and end timestamps, and the total recording duration. This avoids re-reading and re-parsing the CSV files on every API call, saving time that is needed to re-parse the CSV files. The trade-off is increased memory usage, where a single subject's data is approximately 20-30 MB in memory. But since the system processes one subject at a time, this is well within acceptable limits for most devices. This feature is not particularly needed where data is received in real time during active use. 
+
+4.3.2 SSE Generator Pattern 
+
+The SSE streaming endpoint uses Flask's generator-based Response pattern. A Python generator function gets one SSE event per sliding window: 
+
+data: {"time": 12.0, "progress": 1.5, "overall": 87.3, ...}\n\n 
+
+Each yield is followed by a time.sleep (step/speed) call to simulate real-time playback. At default settings (2-second step, 10x speed), this produces one event every 0.2 seconds. When the generator reaches the end of the recording, it yields a final event containing a "done" flag event and the generator exits, finishing the connection. 
+
+The Response object is created with the mimetype set to "text/event-stream" and cache-control headers set to "no-cache". An additional "X-Accel-Buffering: no" header is included to prevent Nginx or other reverse proxies from buffering the stream, which would cause events to arrive in batches rather than individually. 
+
+4.3.3 Signal Down-sampling 
+
+The signal endpoint (/api/signals) returns down-sampled data to plot graphs. A 90-minute recording of for example, BVP at 64 Hz, holds 345,000 data points. Just sending all of them to the frontend would be impractical. The endpoint accepts a max_points query parameter (default 2000) and applies down-sampling by selecting every nth sample where  
+n = total_samples / max_points. This preserves the overall shape of the signal and keeping the response payload manageable. 
+
+  
+
+5 System in Operation 
+
+This chapter shows the system processing the WESAD physiological recordings. It describes how a monitoring session is started, walks through a complete session using Subject S2 as an example, and shows the quality assessment results seen across all nine available subjects.  
+
+5.1 Starting a Monitoring Session 
+
+To start the system, the user launches the Flask backend, which fetches the subject data from extracted CSV files. At the time of writing, nine subjects are available (S2-S10). The dashboard loads in a web browser and presents the header controls: a subject dropdown, a playback speed selector (1x, 5x, 10x, 25x, or 50x), and a Start Monitor button. The status bar below the header shows "Ready to start" in grey. 
+
+When the user selects a subject and clicks Start Monitor, the frontend opens an SSE connection to the /api/stream endpoint. The backend loads the subject's CSV files, constructs the timestamp arrays, and begins processing the recording through the sliding window algorithm. Each window's quality results are encoded as a JSON-formatted SSE event and pushed to the dashboard. The frontend parses each event, updates the aggregate score ring and metric cards for the current window, and appends the result to the timeline chart's rolling history buffer. 
+
+At 10x playback speed, a typical two-hour WESAD recording completes streaming in approximately 12 minutes. At 50x speed, the same recording takes around 2.5 minutes. The user can stop the stream at any time using the Stop button, which closes the SSE connection and freezes the dashboard at its current state, preserving all quality data accumulated up to that point. 
+
+5.2 Walkthrough: Subject S2 
+
+Subject S2 is a 27-year-old male with a recording duration of approximately 131 minutes. This section walks through what the dashboard displays during a full monitoring session of this recording. Figure 5.1 shows the dashboard during an active streaming session for Subject S2, showing the main interface components. 
+
+[Figure 5.1: Dashboard screenshot during an active streaming session for Subject S2] 
+
+5.2.1 Initial Observations 
+
+After the first few seconds of streaming, the aggregate score settles into Excellent (above 80%). The four metrics show a clear pattern that persists throughout the recording: 
+
+EDA consistently scores near 100%, with both completeness and signal quality being very high. The electrodermal signal from the E4 is smooth and well above the 0.05 μS on-body threshold throughout. 
+
+TEMP also scores near 100%. The skin temperature stays within the 30-40°C range with minimal inter-sample changes, showing stable skin contact. 
+
+ACC varies more widely, ranging from 62% to 100%. The score fluctuates with the subject's activity level, where periods of stillness (e.g. the baseline meditation condition) produce lower ACC quality scores due to the variance approaching the stuck-signal threshold, while periods of movement produce higher scores. 
+
+BVP is the weakest sensor, averaging around 59% with scores ranging from 45% to 83%. The spectral entropy metric often places BVP in the red, showing the known difficulty of obtaining clean photoplethysmography signals from the wrist during movement. 
+
+5.2.2 On-Body Detection 
+
+The combined on-body indicator (EDA + TEMP) shows "ON-BODY" for 100% of windows in the S2 recording, which confirms that the device was worn continuously throughout the study protocol. This is normal and expected, as the WESAD participants were instructed to keep the E4 on their wrist for the entire session. The on-body indicator serves as a reassuring confirmation rather than revealing new data in the controlled laboratory setting, but it would be more informative in normal situations where device removal/displacement is more common. 
+
+5.2.3 Timeline Patterns 
+
+The timeline chart reveals temporal patterns in data quality. The overall quality score fluctuates between around 77% and 90% across the session. Toggling the per-sensor overlay shows the source of these fluctuations, as the overall line closely tracks the BVP trace, since BVP has the widest quality range and the most influence on the overall mean. EDA and TEMP form a near-flat line at the top of the chart, while ACC oscillates in the middle. 
+
+Dips in overall quality tend to cluster at certain points in the recording, which correspond to the stress and amusement conditions in the WESAD protocol, e.g. during the Trier Social Stress Test. The increased wrist movement during these conditions degrades BVP signal quality through motion artifacts and introduces more variance in the ACC readings. 
+
+5.3 Cross-Subject Quality Summary 
+
+Running the quality assessment across all nine subjects produces the summary shown in Figure 5.2. The top chart shows the mean overall quality score for each subject with error bars showing the minimum and maximum scores seen during the recording. The bottom chart shows the proportion of sliding windows that achieved a score of 80% or above. Recording durations ranged from 103.6 minutes (S9) to 138.6 minutes (S6). 
+
+[Figure 5.2: Quality Score Summary Across Subjects] 
+
+Mean quality is consistent across subjects. All nine subjects achieve mean overall scores between 80.2% and 83.2%, a range of only 3 percentage points. This consistency suggests that the E4 device performs reliably across different individuals under laboratory conditions, and that the quality assessment framework produces stable, comparable results. 
+
+Even the highest-scoring subject by mean quality (S8) achieves only 78% of windows in the Excellent zone. The remaining windows fall into the "Acceptable" (60–80%) range, primarily due to BVP signal quality drops during movement. No windows fall below 60% for any subject, showing that complete data quality failures do not occur in the WESAD dataset.  
+
+Subject S5 shows the most variability. With a minimum score of 65.6% and only 48% of windows in the "Excellent" zone, S5 has the most variable quality profile. This subject may have exhibited more movement during the recording or may have had physiological characteristics such as darker skin pigmentation or lower peripheral perfusion, both of which are known to reduce PPG signal quality in wrist-worn devices [13]. 
+
+Sessions range from 103.6 minutes (S9) to 138.6 minutes (S6). Despite this variation, quality scores stay consistent, showing that recording length does not affect quality, as there is no degradation over time that would suggest sensor drift or any battery-related issues. 
+
+5.4 Sensor-Specific Observations 
+
+The per-sensor breakdown for S2 (representative of all subjects) shows a clear reliability ranking across the four sensors: 
+
+EDA: mean 99.7%, standard deviation 1.6%. The most reliable sensor. The slow-changing nature of electrodermal signals makes them resistant to motion artifacts, and the on-body detection threshold of 0.05 μS is easily exceeded during normal wear. 
+
+TEMP: mean 98.8%, standard deviation 1.1%. Almost as reliable as EDA, as the skin temperature sensor provides a stable signal with minimal noise, and the physiological range check (30-40°C) is rarely exceeded during the tests. 
+
+ACC: mean 72.7%, standard deviation 14.6%. Moderate reliability with high variability, as the accelerometer quality depends strongly on the subject's activity level. During rest, the low variance approaches the stuck-signal threshold, reducing the quality score. During movement, all three sub-checks of variance, magnitude range and saturation are easily satisfied. 
+
+BVP: mean 59.1%, standard deviation 8.1%. The least reliable sensor. Wrist-based photoplethysmography is known to be very susceptible to motion artifacts, poor skin contact, and variations in peripheral perfusion. During movement, the BVP power spectrum becomes diffused, producing high entropy and low-quality scores. 
+
+The reliability rankings align with the findings of Böttcher et al. [3] and the broader wearable sensing literature. BVP is consistently identified as the most challenging modality for wrist-worn devices, while EDA and temperature provide comparatively stable readings.  
+
+  
+
+6 Testing and Evaluation 
+
+This chapter evaluates the system through two approaches. Firstly, signal validity testing compares the E4 wrist signals against the simultaneously recorded chest-worn RespiBAN signals from the WESAD dataset, confirming that the quality metrics are grounded in real physiological activity. Secondly, a user evaluation assesses how effectively the dashboard communicates quality information to both expert and non-expert users. The chapter concludes with a discussion of the system's current limitations. 
+
+6.1 Signal Validity: Wrist E4 vs Chest RespiBAN 
+
+The quality assessment framework assumes that the signals captured by the E4 wristband represent genuine physiological activity rather than noise. To confirm this assumption, the wrist E4 signals from Subject S2 were compared against the simultaneously recorded chest-worn RespiBAN signals. Both devices were worn throughout the same WESAD study session, recording the same physiological responses via different measurement sites. The WESAD dataset's dual-device design makes this comparison possible without a separate data collection effort. Four automated tests were implemented in test_quality_monitor.py and executed against the S2 data file. 
+
+6.1.1 Test 1: EDA Reliability 
+
+Wrist EDA and chest EDA were compared over the full S2 recording. The wrist signal ranges from 0.045 to 1.717 μS and the chest signal from 0.370 to 7.480 μS; the differing ranges are expected because the electrode placement and skin surface area differ between the two zones. Computing a Pearson correlation over both signals yielded r = 0.779, confirming a strong and significant relationship. Windowed correlations across all the windows show a mean r of 0.347, with high variance (SD = 0.485, range -0.912 to 0.997). This variability is expected: transient events such as movement or inconsistent skin contact reduce short-window correlation even when the global trend is well preserved. The test passed its criterion of r >= 0.5 overall. 
+
+6.1.2 Test 2: Temperature Reliability 
+
+Both wrist and chest temperature sensors were checked against the physiological skin temperature range of 28-40°C. Wrist readings ranged from 32.3 to 36.0°C and chest readings from 28.2 to 34.3°C. The overall Pearson correlation between the two signals is r = -0.587; this negative value is expected given the overall different anatomical locations, as wrist and chest skin temperature respond to peripheral vasoconstriction in opposing directions depending on the measurement site. The pass criterion (≥ 95% of samples in the 30-40°C range for both sensors) was met for both sensors. 
+
+6.1.3 Test 3: Heart Rate Agreement (BVP vs ECG) 
+
+Heart rate was estimated from the wrist BVP signal and the chest ECG signal independently for each window using autocorrelation-based peak detection. Of all valid windows where both signals produced a detectable cardiac peak, 70.5% showed agreement within 10 BPM, substantially exceeding the 40% pass threshold. The mean absolute error across all valid windows was 11.4 BPM, and the Pearson correlation between estimated heart rates was r = 0.201. The relatively low correlation but high within-10-BPM agreement reflects the rough resolution of autocorrelation-based estimation in 10-second windows, where both methods often yield similar heart rate estimates without a perfectly linear relationship across the full range. 
+
+6.1.4 Test 4: Per-Condition EDA Correlation 
+
+EDA wrist-chest correlations were computed separately for each WESAD experimental condition to check whether the wrist signal tracks physiological changes across different conditions. Across 289 valid windows in the four main conditions, mean correlations were: baseline r = 0.390, stress r = 0.520, amusement r = 0.330, and meditation r = 0.361. The highest correlation during stress aligns with physiological expectation, where stress produces pronounced electrodermal responses that are detectable across both body sites, increasing inter-site agreement. The test passed its criterion of correlations being reportable across at least two conditions. 
+
+6.1.5 Validation Summary 
+
+All four tests passed, and Figure 6.1 summarises the key results. The strong overall EDA correlation against the pass threshold (Chart A), per-condition EDA wrist-chest agreement with stress producing the highest correlation (Chart B), and the proportion of heart-rate windows agreeing within 10 BPM (Chart C). These results confirm that the E4 wrist signals in the WESAD dataset capture genuine physiological responses, providing grounding for the quality metrics presented in Chapter 5. 
+
+[Figure 6.1: Signal Validity Results] 
+
+6.2 User Evaluation 
+
+A user evaluation was conducted to assess how effectively the dashboard communicates data quality information to its intended audience. The study followed an observational design: each participant was shown the running system, interacted with it freely, and then completed a structured questionnaire. 
+
+6.2.1 Participants 
+
+Five participants were recruited through personal contact, aged between 20 and 53. One participant reported a background in the medical field; the remaining four had no medical or physiological training. This mix was intentional, as the dashboard is designed to be interpretable by both clinical professionals and non-experts, and the evaluation needed to see whether both groups could extract meaningful quality information from the interface. All participants provided written informed consent before the session, and signed consent forms are held on file. 
+
+6.2.2 Session Procedure 
+
+Each session was conducted individually and lasted approximately 10-15 minutes. The procedure was as follows: 
+
+1. Introduction (3 minutes): The researcher explained the purpose of the E4 wristband and the WESAD dataset in one or two sentences, without describing the quality metrics or dashboard design in detail. This was intentional, as the evaluation aimed to assess the dashboard's self-explanatory clarity, not a trained user's recall. 
+
+2. Demonstration (5 minutes): The researcher launched the dashboard in a web browser and started streaming Subject S2's recording at 10x speed. The participant was invited to watch the dashboard update in real time and to interact freely, which included zooming the timeline chart, hovering over metric cards, and toggling the per-sensor overlay without being given instructions on how to use these features. 
+
+3. Questionnaire (2-5 minutes): After streaming stopped, the participant completed a Microsoft form questionnaire independently, without guidance from the researcher. The researcher was present but did not comment on the participant's responses. 
+
+The same subject (S2) was used for all sessions to ensure a consistent experience across participants and to allow direct comparison of responses. 
+
+6.2.3 Questionnaire Design 
+
+The questionnaire was made up of two demographic questions (Age + Are you medically literate), five Likert-scale statements (1 = Strongly Disagree, 5 = Strongly Agree), and one open-ended question. The Likert statements were designed to target distinct components of the dashboard: 
+
+Q3: The overall quality score was easy to understand at a glance (aggregate score ring) 
+
+Q4: The colour coding (green/amber/red) helped identify periods of poor data quality (traffic-light design) 
+
+Q5: The per-sensor breakdown (ACC, BVP, EDA, TEMP) provided useful detail beyond the overall score (metric cards) 
+
+Q6: The real-time timeline chart made it easy to see how data quality changed over the recording (temporal visualisation) 
+
+Q7: I would feel confident using this dashboard to decide whether collected data is reliable enough for analysis (overall utility) 
+
+The open-ended question (Q8) asked what, if anything, the participant would change about the dashboard. This was included to capture unsolicited feature requests and usability concerns that may not have been captured by Likert statements. 
+
+6.2.4 Results 
+
+[Table 6.2: User Evaluation Questionnaire Results (1=Strongly Disagree, 5=Strongly Agree)]  
+
+Question 
+	
+
+T1 
+	
+
+*T2 
+	
+
+T3 
+	
+
+T4 
+	
+
+T5 
+	
+
+Mean 
+
+Q3: Easy to understand at a glance 
+	
+
+5 
+	
+
+4 
+	
+
+4 
+	
+
+5 
+	
+
+4 
+	
+
+4.4 
+
+Q4: Colour coding helpful   
+	
+
+5 
+	
+
+5 
+	
+
+4 
+	
+
+4 
+	
+
+5 
+	
+
+4.6 
+
+Q5: Per-sensor breakdown useful 
+	
+
+3 
+	
+
+5 
+	
+
+3 
+	
+
+4 
+	
+
+3 
+	
+
+3.6 
+
+Q6: Timeline chart easy to read 
+	
+
+4 
+	
+
+4 
+	
+
+5 
+	
+
+4 
+	
+
+3 
+	
+
+4 
+
+Q7: Confident using for reliability 
+	
+
+4 
+	
+
+5 
+	
+
+4 
+	
+
+3 
+	
+
+4 
+	
+
+4 
+
+ 
+
+*T2 is the medically literate participant. 
+
+All five questions received mean scores above the midpoint of 3.0, indicating overall positive reception across the group. 
+
+The colour coding (Q4) received the highest mean score of 4.6. All five participants rated it 4 or 5, which is the strongest consensus of any question. This confirms the decision to apply a consistent green/amber/red convention across all interface components (Section 3.3.3) being valid, and suggests that even first-time users can at once interpret the traffic-light scheme without explanation. 
+
+The overall score readability (Q3) scored with a mean of 4.4. Two participants gave a maximum score of 5. This shows that the aggregate score ring and its colour-coded percentage provide an effective at-a-glance quality summary. 
+
+The timeline chart (Q6) and overall confidence (Q7) both scored 4.0. These scores show that the temporal visualisation is effective and that users generally trust the dashboard's assessment, but with lower scores showing that some users have less confidence reading complex graphs. 
+
+The per-sensor breakdown (Q5) received the lowest mean score of 3.6, and shows the widest spread. The medically literate participant (T2) rated it 5; three of the four non-expert participants rated it 3. One rated it 4. This pattern suggests that the sensor-level detail is valued by users with medical knowledge but is of less immediate utility to non-experts who lack context for interpreting individual sensor scores. 
+
+6.2.5 Qualitative Feedback 
+
+Open-ended responses reinforced the quantitative pattern and surfaced specific design improvements. The raw participant responses were as follows: 
+
+T1: "Nothing, it was clear", indicating that the interface met expectations without generating confusion. 
+
+T2: "Add explanations for what each sensor measures”, the medically literate participant , recognised that non-expert users would benefit from contextual descriptions. 
+
+T3: "The BVP card was always low which was confusing" this directly reflects the Q5 result. BVP's persistently amber/red score could alarm a user who does not know that wrist photoplethysmography inherently produces less consistent signals than others. 
+
+T4: "Maybe a help button or tooltip for first-time users", an actionable suggestion for onboarding support for first-time users. 
+
+T5: "It would be nice to export the results", a feature request for data export functionality, which is not currently implemented. 
+
+A consistent theme across T2, T3, and T4 is the need for contextual explanations at the point of interaction. The dashboard presents quality numbers and colours effectively but does not currently explain what a low BVP score means in practice, what the sensors measure, or what the quality thresholds are based on. A Tooltip or an expandable information panel per sensor card could address this gap without adding too much visual clutter to the main interface. 
+
+6.2.6 Discussion 
+
+The evaluation results confirm that the dashboard's core design decisions are effective. The traffic-light colour scheme (Q4) is the strongest validated element, as it communicates status instantly without requiring reading the numbers, and it works equally well for expert and non-expert users. The aggregate score ring (Q3) is the second strongest, showing that a single percentage with colour coding gives users a reliable at-a-glance summary. 
+
+The gap between T2 and the non-expert participants on Q5 highlights a genuine design gap. Sensor-level detail is useful for researchers who know which modalities matter most for their analysis (e.g. a researcher who only needs EDA quality can ignore BVP's low quality signals), but it is confusing for general users without that domain knowledge. Addressing this would not require redesigning the interface, as it would only require adding contextual information that is currently not implemented. 
+
+The overall confidence score of 4.0 (Q7) shows that the dashboard achieves its primary goal: enabling users to judge data reliability. The score falling short of 5 is attributable in part, to the per-sensor confusion found. Users who do not understand why BVP is red may reasonably feel less confident in a dashboard that shows red indicators without explanation. 
+
+6.3 Limitations 
+
+Several limitations of the current system and its evaluation should be acknowledged. 
+
+User study sample size. The evaluation involved five participants, which constitutes a convenience sample rather than a statistically representative group. A more rigorous study would recruit at least 12-15 participants, use stratified sampling to balance clinical and non-clinical backgrounds, and apply counterbalancing to control for order effects. The current evaluation is best understood as a formative assessment identifying design issues for future iteration rather than a summative proof of current usability. 
+
+Single-subject validation. The signal validity tests in Section 6.1 were run against Subject S2 only. S2 was selected because it was the subject streamed during all five user evaluation sessions, making it the recording against which the system's behaviour was most frequently observed during development. This could introduce a form of confirmation bias: any systematic errors in the quality metrics are more likely to have been noticed and corrected for S2 than for the other eight subjects. A stronger validation would run the full test suite across all nine subjects; the consistency of aggregate quality scores in Section 5.3 (range 80.2-83.2% across S2-S10) suggests the results would generalise, but this should be confirmed. 
+
+Laboratory-controlled dataset. The WESAD recordings were collected in a controlled laboratory environment where participants remained seated or performed scripted tasks. In this setting, on-body detection is always positive, and data gaps are absent. The system's on-body detection and completeness metrics would be more meaningfully tested in a free-living deployment where device removal and gaps in transmission are more common. Critically, the automated test suite was never executed against a window where the device was confirmed off body, because no such windows exist at all in the WESAD data. The current results therefore are a best-case scenario for the on-body detection and completeness dimensions. 
+
+EDA off-body cascade behaviour. The cascade test revealed that EDA signal quality does not degrade meaningfully when the device is off-body. Flat near-zero EDA readings produce very small rate-of-change values that satisfy the 0.5 µS/s threshold, so EDA signal quality remains near 100% even without skin contact. As a result, EDA's aggregate score falls by only approximately 20% when off-body, as the on-body dimension drops to zero, but signal quality does not. This is compared to drops of 70% or higher for BVP and TEMP, which fail their respective signal quality checks without skin contact. This means an off-body event does not cascade as strongly through EDA's contribution to the overall score. A future refinement could incorporate an amplitude floor into the EDA signal quality check e.g. requiring mean EDA to exceed 0.05 µS before signal quality is scored, though this can risk conflating on-body detection with signal quality assessment, blurring the clean dimensional separation set up by Böttcher et al. [3]. 
+
+Heuristic quality thresholds. The quality thresholds used throughout the framework, which is the 80%/60% tier boundaries, the 0.5 µS/s EDA rate-of-change limit, the spectral entropy normalisation for BVP, and the ACC variance threshold of 0.01, were all selected based on the Böttcher et al. [3] framework and domain knowledge, not derived from clinical validation against a labelled ground truth of "usable" versus "unusable" data windows. A clinically validated threshold set would require manual annotation of a large dataset by domain experts, which was way beyond the scope of this project. 
+
+Aggregate score weighting. The aggregate formula assigns fixed weights of 20% to completeness, 20% to on-body detection, and 60% to signal quality. These weights were adopted from the Böttcher et al. [3] framework on the basis that signal quality is the most direct consequential data for measuring data quality. However, the weights were not derived from user preferences or confirmed against a labelled outcome. A researcher who prioritises completeness e.g. when studying long-term trends where gaps corrupt time-series analysis more than momentary noise does, might reasonably prefer a higher completeness weight. A formal sensitivity analysis, or a weight-selection control exposed in the dashboard interface, could make the framework more adaptable to different research use cases. 
+
+BVP quality metric sensitivity. The spectral entropy approach to BVP quality scoring is sensitive to motion artifacts. Wrist photoplethysmography is susceptible to movement-induced noise across the same 0.5-4 Hz frequency band used to assess cardiac signal regularity. During periods of physical activity, motion artifacts can dominate the BVP spectrum and elevate spectral entropy, causing the metric to score a motion-corrupted signal as low quality even when the underlying cardiac signal is present. Conversely, a genuinely irregular signal and a motion-corrupted one may produce similar entropy values, reducing the metric's discriminative power. A more robust implementation would incorporate an accelerometer-based gating step, suspending or down-weighting the BVP spectral entropy score when ACC variance exceeds the movement threshold to separate motion artifacts from genuinely poor cardiac signals. 
+
+  
+
+7 Conclusions 
+
+This project successfully developed and evaluated a wearable data quality assessment system comprising a multi-dimensional quality framework and an interactive visualisation dashboard. This chapter reviews whether the four project aims stated in Section 1.4 were met, discusses key lessons learned, and suggests directions for future work. 
+
+7.1 Review of Aims and Objectives 
+
+Create a Data Quality Assessment Framework. A sliding window quality framework was implemented, evaluating the Empatica E4's four sensor modalities (ACC, BVP, EDA, TEMP) across three dimensions: data completeness, on-body detection, and signal quality. The framework adapts the methodology of Böttcher et al. [3] for real-time operation, using sensor-specific algorithms including spectral entropy for BVP, rate-of-change analysis for EDA, physiological range checks for temperature, and multi-factor variance analysis for the accelerometer. The weighted aggregate score proved stable and consistent across all nine WESAD subjects, with mean scores ranging from 80.2% to 83.2%, confirming that this objective was met. 
+
+Design Uncertainty Visualisation Techniques. The dashboard communicates uncertainty through a colour-coded traffic-light scheme (green/amber/red), a circular aggregate score ring, individual sensor metric cards displaying completeness and signal quality sub-scores, and a real-time timeline chart with interactive zoom, pan, and per-sensor overlay. User evaluation confirmed that colour coding and the aggregate score ring were the most effective elements, receiving mean Likert scores of 4.6 and 4.4 respectively, confirming this objective was met. 
+
+Build an Interactive Dashboard. A full-stack web application was built using Flask and React, connected by a Server-Sent Events streaming interface. The dashboard supports subject selection, variable playback speed (1x to 50x), real-time quality streaming, and an on-body status indicator. The system was successfully demonstrated across all nine WESAD subjects, confirming this objective was met. 
+
+Evaluate Effectiveness Through User Studies. Signal validity testing confirmed that the E4 wrist signals track genuine physiological responses across four automated tests, all of which passed. A user study with five participants showed positive reception overall (all mean scores above 3.0 on a 5-point Likert scale), identifying colour coding as the strongest element (mean 4.6) and contextual sensor labelling as the primary gap for future improvement. This objective was met, though the study's small sample size limits generalisability. 
+
+7.2 Lessons Learned 
+
+The most significant practical lesson was the importance of matching the dataset to the evaluation context. The controlled laboratory setting of the WESAD dataset simplified development but meant that the on-body detection and completeness metrics could not be tested against real device removal or transmission failures. A free-living deployment would be required to fully validate these dimensions. 
+
+The EDA off-body cascade limitation revealed a design tension inherent in the three-dimensional quality framework: clean dimensional separation between on-body detection and signal quality is straightforward in theory, but some sensors produce low-noise signals even when not worn. Incorporating an amplitude-floor check for EDA into the signal quality calculation would strengthen the framework's behaviour in off-body scenarios. 
+
+The user evaluation highlighted that expert and non-expert users have substantially different information needs. The sensor-level detail valued by the medically literate participant was a source of confusion for non-experts. A tiered interface that defaults to an aggregate-only view with optional sensor-level expansion would better serve both audiences without redesigning the core layout. 
+
+7.3 Future Work 
+
+Several directions would meaningfully extend this project. Deploying the system in a free-living environment with real device removal events would validate the on-body detection and completeness metrics beyond the best-case WESAD conditions. Adding tooltip or expandable information panels to each sensor card would directly address the most common feedback from the user evaluation (T2, T3, T4). Incorporating accelerometer-based motion gating into the BVP quality metric would improve its discriminative power during physical activity. Finally, running the signal validity test suite across all nine WESAD subjects, rather than only S2, would confirm that the framework generalises across individuals. 
+
+ 
+
+ADD CONCLUSION SECTION (CAN BE SMALL, GO OVER AIMS AND OBJECTIVES) 
+REARRANGE REFERENCES 1-15 
+
+Check statements and see if they are backed up by a reference 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Shape 
+
+References 
+
+[1] Chandrasekaran, R., Katthula, V. and Moustakas, E. (2020). Patterns of Use and Key Predictors for the Use of Wearable Health Care Devices by US Adults: Insights from a National Survey. Journal of Medical Internet Research, 22(10), e22443. doi: https://doi.org/10.2196/22443   
+
+ 
+
+[2] Smuck, M., Odonkor, C.A., Wilt, J.K., Schmidt, N. and Croom, M.A. (2021). The emerging clinical role of wearables: factors for successful implementation in healthcare. NPJ Digital Medicine, 4(1), p.45. doi: https://doi.org/10.1038/s41746-021-00418-3   
+
+ 
+
+[3] Böttcher, S., Vieluf, S., Bruno, E., Joseph, B., Epitashvili, N., Biondi, A., Zabler, N., Glasstetter, M., Dümpelmann, M., Van Laerhoven, K., Nasseri, M., Brinkman, B.H., Richardson, M.P., Schulze-Bonhage, A. and Loddenkemper, T. (2022). Data quality evaluation in wearable monitoring. Scientific Reports, 12(1), pp.1–16. doi: https://doi.org/10.1038/s41598-022-25949-x   
+
+ 
+
+[4] Fuller, D., Colwell, E., Low, J., Orychock, K., Tobin, M.A., Simango, B., Buote, R., Van Heerden, D., Luan, H., Cullen, K., Slade, L. and Taylor, N.G.A. (2020). Reliability and Validity of Commercially Available Wearable Devices for Measuring Steps, Energy Expenditure, and Heart Rate: Systematic Review. JMIR mHealth and uHealth, 8(9), e18694. doi: https://doi.org/10.2196/18694 
+
+ 
+
+[5] Knowles, B. (2018). Uncertainty in Current and Future Health Wearables. Communications of the ACM, 61(12), pp.40–42. doi: https://doi.org/10.1145/3199201 
+
+ 
+
+[6] Kamal, A., Dhakal, P., Javaid, A.Y., Devabhaktuni, V.K., Sherwood, J. and Kamal, J.M. (2021). Recent advances and challenges in uncertainty visualization: a survey. Journal of Visualization, 24(5), pp.861–890. doi: https://doi.org/10.1007/s12650-021-00755-1 
+
+ 
+
+[7] Park, S., Bekemeier, B., Flaxman, A. and Schultz, M. (2022). Impact of data visualization on decision-making and its implications for public health practice: a systematic literature review. Informatics for Health and Social Care, 47(2), pp.175–192. doi: https://doi.org/10.1080/17538157.2021.1982949 
+
+ 
+
+[8] Shei, R.-J., Holder, I.G., Oumsang, A.S., Paris, B.A. and Paris, H.L. (2022). Wearable activity trackers–advanced technology or advanced marketing? European Journal of Applied Physiology, 122(9), pp.1975–1990. doi: https://doi.org/10.1007/s00421-022-04951-1 
+
+ 
+
+[9] Abdolkhani, R., Gray, K., Borda, A. and DeSouza, R. (2020). Quality Assurance of Health Wearables Data: Participatory Workshop on Barriers, Solutions, and Expectations. JMIR mHealth and uHealth, 8(1), e15329. doi: https://doi.org/10.2196/15329 
+
+  
+
+[10] Schmidt, P., Reiss, A., Duerichen, R., Marberger, C. and Van Laerhoven, K. (2018). Introducing WESAD, a Multimodal Dataset for Wearable Stress and Affect Detection. In Proceedings of the 20th ACM International Conference on Multimodal Interaction (ICMI '18). New York: ACM, pp. 400–408. doi: https://doi.org/10.1145/3242969.3242985 
+
+ 
+
+[11] Schuurmans, A.A.T., De Looff, P., Nijhof, K.S., Rosada, C., Scholte, R.H.J., Popma, A. and Dobbelaar, S. (2020). Validity of the Empatica E4 wristband to measure heart rate variability (HRV) parameters: A comparison to electrocardiography (ECG). Journal of Medical Systems, 44(11), p.190. doi: https://doi.org/10.1007/s10916-020-01648-w 
+
+ 
+
+[12] Van Der Donckt, J., Vandenbussche, N., Degroote, L., Bruneel, H. and Verstockt, S. (2024). Addressing data quality challenges in observational ambulatory studies: Analysis, methodologies and practical solutions for wrist-worn wearable monitoring. arXiv preprint, arXiv:2401.13518. doi: https://doi.org/10.48550/arXiv.2401.13518 
+
+ 
+
+[13] Moscato, S., Lo Giudice, S., Massaro, G. and Chiari, L. (2022). Wrist Photoplethysmography Signal Quality Assessment for Reliable Heart Rate Estimate and Morphological Analysis. Sensors, 22(15), p.5831. doi: https://doi.org/10.3390/s22155831 
+
+ 
+
+[14] Posada-Quintero, H.F. and Chon, K.H. (2020). Innovations in Electrodermal Activity Data Collection and Signal Processing: A Systematic Review. Sensors, 20(2), p.479. doi: https://doi.org/10.3390/s20020479 
+
+ 
+
+[15] Gashi, S., Di Lascio, E., Stancu, B., Swain, V.D., Vital, S., Langheinrich, M. and Santini, S. (2020). Detection of Artifacts in Ambulatory Electrodermal Activity Data. Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 4(2), pp.1–31. doi: https://doi.org/10.1145/3397316 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Shape 
+
+Appendix A: Original Project Proposal 
+
+[Insert your original project proposal from Michaelmas term - do not edit] 
+
+Shape 
+
+Appendix B: [Insert Title] 
+
+[Insert supplementary material such as code excerpts, questionnaires, interview transcripts, participant information sheets, consent forms, graphs, or visualisations] 
+
+Shape 
+
+Formatting Notes 
+
+    Font: Times New Roman or Computer Modern, minimum 12pt, single-spaced 
+
+    Maximum length: 12,000 words (excluding front matter, references, and appendices) 
+
+    Chapter structure: Each chapter starts on new page; sections do NOT start on new page unless necessary 
+
+    Subsection numbering: x.1, x.2, etc.; x.1.1, x.1.2, etc. (do not go deeper than x.1.1) 
+
+    Figures: Number as Figure x.1, Figure x.2, etc. Include captions and refer to in text 
+
+    Tables: Number as Table x.1, Table x.2, etc. Include captions and refer to in text 
+
+    References: Use only one referencing style throughout (Harvard or IEEE recommended) 
+
+    Page numbers: All pages numbered 
+
+    Ethics: If your project involved human participants, include ethics application, participant consent form, and information sheet with submission 

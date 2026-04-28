@@ -207,7 +207,7 @@ export default function App() {
         {/* 2-5. Four sensor metric cards */}
         <div className="grid-acc">
           <MetricCard
-            sensor="ACC"
+            sensor="Movement Sensor"
             label="Accelerometer"
             data={currentWindow?.acc}
             color="#ab47bc"
@@ -216,7 +216,7 @@ export default function App() {
         </div>
         <div className="grid-bvp">
           <MetricCard
-            sensor="BVP"
+            sensor="HeartBeat Sensor"
             label="Blood Volume Pulse"
             data={currentWindow?.bvp}
             color="#ef5350"
@@ -225,7 +225,7 @@ export default function App() {
         </div>
         <div className="grid-eda">
           <MetricCard
-            sensor="EDA"
+            sensor="Skin Activity Sensor"
             label="Electrodermal Activity"
             data={currentWindow?.eda}
             color="#66bb6a"
@@ -234,7 +234,7 @@ export default function App() {
         </div>
         <div className="grid-temp">
           <MetricCard
-            sensor="TEMP"
+            sensor="Skin Temperature Sensor"
             label="Skin Temperature"
             data={currentWindow?.temp}
             color="#ffa726"
